@@ -9,6 +9,6 @@ async def status_function(bot: BOT, message: Message):
             capture_output=True, text=True
         )
         status = result.stdout.strip()
-        await message.reply(f"Status do container: {status}")
+        await message.reply(f"LocalHost status: {status}")
     except Exception as e:
-        await message.reply(f"Erro ao verificar status: {e}")
+        await message.reply(f"Error to check status: {e}")
