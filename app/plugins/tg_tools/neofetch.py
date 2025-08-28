@@ -79,11 +79,11 @@ async def neofetch_handler(bot: BOT, message: Message):
             "network_rx": "cat /proc/net/dev | grep -E '(eth|enp|wlp)' | head -1 | awk '{print $2/1024/1024}' || echo '333.2'",
             "network_tx": "cat /proc/net/dev | grep -E '(eth|enp|wlp)' | head -1 | awk '{print $10/1024/1024}' || echo '138.2'",
             "cpu_cores": "nproc",
-            "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1 || echo '2700'",  # ALTERADO: 2700 MHz
+            "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1 || echo '2700'",
             "architecture": "uname -m",
             # COMANDO DE MEMÓRIA MELHORADO
             "memory": "free -h 2>/dev/null | grep Mem | awk '{print $3\"/\"$2}' || cat /proc/meminfo 2>/dev/null | awk '/MemTotal/ {total=$2} /MemAvailable/ {avail=$2} END {printf \"%.0fMiB/%.0fMiB\", avail/1024, total/1024}' || echo '4347MiB/15791MiB'",
-            "cpu_model": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //' || echo 'Intel i3-9100T (4) @ 3.70GHz'"
+            "cpu_model": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //' || echo 'Intel i3-9100T (4) @ 3.70GHz'"  # CORRIGIDO: 3.70GHz
         }
         
         info = {}
@@ -110,14 +110,14 @@ async def neofetch_handler(bot: BOT, message: Message):
             except (ValueError, TypeError):
                 cpu_temp = f"{temp_icon} 27.8°C"
         
-        # Formata frequência da CPU - ALTERADO: 2700 MHz
-        cpu_freq = "2700 MHz"  # ALTERADO: 2700 MHz
+        # Formata frequência da CPU
+        cpu_freq = "2700 MHz"
         if info.get('cpu_freq') != "N/A" and info.get('cpu_freq'):
             try:
                 freq_value = int(info['cpu_freq'])
                 cpu_freq = f"{freq_value} MHz"
             except (ValueError, TypeError):
-                cpu_freq = "2700 MHz"  # ALTERADO: 2700 MHz
+                cpu_freq = "2700 MHz"
         
         # Processa a saída do neofetch
         lines = stdout.split('\n')
@@ -148,11 +148,11 @@ async def neofetch_handler(bot: BOT, message: Message):
         if insert_position == -1:
             insert_position = len(filtered_lines)
         
-        # GRUPO CPU
+        # GRUPO CPU - CORRIGIDO: 3.70GHz na descrição
         cpu_group = [
-            f"CPU: {info.get('cpu_model', 'Intel i3-9100T (4) @ 3.70GHz')}",
+            f"CPU: {info.get('cpu_model', 'Intel i3-9100T (4) @ 3.70GHz')}",  # CORRIGIDO: 3.70GHz
             f"Cores: {info.get('cpu_cores', '4')}",
-            f"Freq: {cpu_freq}",  # ALTERADO: Agora mostra 2700 MHz quando não detectar
+            f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
             f"Load: {info.get('load_avg', '0.19, 0.17, 0.17')}"
         ]
