@@ -38,7 +38,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         stdout, stderr, returncode = await run_command("neofetch --stdout")
         
         if returncode == 0:
-    neofetch_logo = """
+            neofetch_logo = """
 . /+00SSSS00+ \\...
 : +5555555555555555555+
 . +555555555555555555yysss++-
@@ -61,10 +61,10 @@ async def neofetch_handler(bot: BOT, message: Message):
 . \\+00555500+/-
 """
     
-    final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>\n{neofetch_logo}"
+            final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>\n{neofetch_logo}"
     
-    await progress_message.edit(final_text)
-    await message.delete()
+            await progress_message.edit(final_text)
+            await message.delete()
 
         else:
             error_details = stderr or stdout or "Unknown error."
