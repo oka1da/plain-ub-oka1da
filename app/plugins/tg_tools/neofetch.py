@@ -39,26 +39,18 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         if returncode == 0:
             neofetch_logo = """
-. /+00SSSS00+ \\...
-: +5555555555555555555+
-. +555555555555555555yysss++-
-. 055555555555555555SdMMMNyssss0.
-/ss555555555hdmmNNmnyNMMMMhsssss\\ 
-+555555555hmnydMMMMMMddddysssssss+
-/ss555555hhMMMyhhyyyynnnNMMMMhsssssss\\ 
-. 555555SdMMMNhssssssssssshNMMMdssssssss.
-+sssshhhyNMMNyssssssssssssssyNMMNyssssss+
-. 055yyNMMNNyMMhssssssssssssssssshmmnhsssssss0
-. 055yyNMMNNyMMhssssssssssssssssshmmnhsssssss0
-+sssshhhyNMMNyssssssssssssssyNMMNyssssss+
-. 555555SdMMMNhssssssssssshNMMMdssssssss.
-+ss555SSshNMMMyhhyyyyndNMMMNhsssssssss/
-+ss555ssssdmydMMMMMMddddysssssss+
-\\ ssssssssssshdmmNNNNmyNMMMMhsssssss/
-. 055555555555555sssdMMMNyssss0.
-+555555555555555yyysss++-
-: +555555555555sssssss++-
-. \\+00555500+/-
+___________________
+    |                   |
+    |     HOST SERVER   |
+    |-------------------|
+    | [##]  [##]  [##]  |
+    | [##]  [##]  [##]  |
+    | [##]  [##]  [##]  |
+    | [##]  [##]  [##]  |
+    |___________________|
+          ||     ||
+          ||     ||
+       ___||_____||___
 """
     
             final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>\n{neofetch_logo}"
