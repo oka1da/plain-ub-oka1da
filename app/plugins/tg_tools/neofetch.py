@@ -38,6 +38,23 @@ async def neofetch_handler(bot: BOT, message: Message):
         stdout, stderr, returncode = await run_command("neofetch --stdout")
         
         if returncode == 0:
+            fedora_logo = r"""
+       .',;::::;,'.
+   .';:cccccccccc:;,.
+ .;cccccccccccccccccc;.
+.:cccccccccccccccccccc:.
+;cccccccccccccccccccccc;
+:cccccccccccccccccccccc:
+:cccccccccccccccccccccc:
+:cccccccccccccccccccccc:
+:cccccccccccccccccccccc:
+;cccccccccccccccccccccc;
+.:cccccccccccccccccccc:.
+ .;cccccccccccccccccc;.
+   .;:cccccccccc:;'.
+       '.,;::::;,'
+"""
+            
             final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>"
             
             await progress_message.edit(final_text)
