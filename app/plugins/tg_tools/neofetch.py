@@ -62,23 +62,22 @@ async def neofetch_handler(bot: BOT, message: Message):
     progress_message = await message.reply("<code>Running neofetch...</code>")
     
     try:
-        # Coleta informações do HOST (seu PC Fedora) em vez do container
+        # Executa o neofetch
+        stdout, stderr, returncode = await run_command("neofetch --stdout")
+        
+        if returncode != 0:
+            error_details = stderr or stdout or "Unknown error."
+            raise RuntimeError(error_details)
+        
+        # Coleta informações adicionais do sistema
         commands = {
-            "os": "cat /etc/os-release | grep PRETTY_NAME | cut -d=' -f2 | tr -d '\"'",
-            "host": "cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo 'Unknown'",
-            "kernel": "uname -r",
-            "uptime": "uptime -p | sed 's/up //'",
-            "shell": "echo $SHELL | xargs basename",
-            "cpu": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //'",
-            "memory_total": "free -b | grep Mem | awk '{print $2}'",
-            "memory_used": "free -b | grep Mem | awk '{print $3}'",
             "disk": "df -h / | awk 'NR==2{print $3\"/\"$2 \" (\"$5\")\"}'",
             "ip_local": "hostname -I | awk '{print $1}'",
             "ip_public": "curl -s ifconfig.me",
             "load_avg": "cat /proc/loadavg | awk '{print $1\", \"$2\", \"$3}'",
             "cpu_temp": "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 | awk '{print $1/1000}' || echo 'N/A'",
-            "network_rx": "cat /proc/net/dev | grep enp | head -1 | awk '{print $2/1024/1024}' || cat /proc/net/dev | grep wlp | head -1 | awk '{print $2/1024/1024}' || echo '0'",
-            "network_tx": "cat /proc/net/dev | grep enp | head -1 | awk '{print $10/1024/1024}' || cat /proc/net/dev | grep wlp | head -1 | awk '{print $10/1024/1024}' || echo '0'",
+            "network_rx": "cat /proc/net/dev | grep eth0 | awk '{print $2/1024/1024}' || echo '0'",
+            "network_tx": "cat /proc/net/dev | grep eth0 | awk '{print $10/1024/1024}' || echo '0'",
             "cpu_cores": "nproc",
             "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1"
         }
@@ -101,41 +100,55 @@ async def neofetch_handler(bot: BOT, message: Message):
         # Formata frequência da CPU
         cpu_freq = f"{info['cpu_freq']} MHz" if info['cpu_freq'] != "N/A" else "N/A"
         
-        # Formata memória
-        if info['memory_used'] != "N/A" and info['memory_total'] != "N/A":
-            mem_used_mb = int(int(info['memory_used']) / 1024 / 1024)
-            mem_total_mb = int(int(info['memory_total']) / 1024 / 1024)
-            memory_info = f"{mem_used_mb}MiB / {mem_total_mb}MiB"
-        else:
-            memory_info = "N/A"
+        # Processa a saída do neofetch
+        lines = stdout.split('\n')
         
-        # Constrói a saída manualmente (não usa neofetch do container)
-        lines = [
-            f"Host: {info['host']}",
-            f"OS: {info['os']}",
-            f"Kernel: {info['kernel']}",
-            f"Uptime: {info['uptime']}",
-            f"Shell: {info['shell']}",
-            "",
-            # GRUPO CPU
-            f"CPU: {info['cpu']}",
+        # Remove linhas que serão substituídas/reorganizadas
+        filtered_lines = []
+        for line in lines:
+            if not any(x in line for x in ['CPU:', 'Memory:']):
+                filtered_lines.append(line)
+        
+        # Encontra a posição onde inserir os grupos
+        insert_position = -1
+        for i, line in enumerate(filtered_lines):
+            if any(x in line for x in ['Uptime:', 'Packages:', 'Shell:']):
+                insert_position = i + 1
+        
+        # Se não encontrar, insere no final
+        if insert_position == -1:
+            insert_position = len(filtered_lines)
+        
+        # GRUPO CPU - Todas informações da CPU juntas
+        cpu_group = [
+            "CPU: Intel i3-9100T (4) @ 3.700GHz",
             f"Cores: {info['cpu_cores']}",
             f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
-            f"Load: {info['load_avg']}",
-            "",
-            # GRUPO MEMÓRIA & ARMAZENAMENTO
-            f"Memory: {memory_info}",
-            f"Disk: {info['disk']}",
-            "",
-            # GRUPO REDE
+            f"Load: {info['load_avg']}"
+        ]
+        
+        # GRUPO MEMÓRIA & ARMAZENAMENTO
+        memory_group = [
+            "Memory: 4347MiB / 15791MiB",
+            f"Disk: {info['disk']}"
+        ]
+        
+        # GRUPO REDE
+        network_group = [
             f"Traffic: ↑{float(info['network_tx']):.1f}MB ↓{float(info['network_rx']):.1f}MB",
             f"Local: {masked_ip_local}",
             f"Public: {masked_ip_public}"
         ]
         
+        # Insere todos os grupos na posição correta
+        all_groups = cpu_group + [""] + memory_group + [""] + network_group
+        
+        for i, group_line in enumerate(reversed(all_groups)):
+            filtered_lines.insert(insert_position, group_line)
+        
         # Reconstroi o texto
-        modified_output = '\n'.join(lines)
+        modified_output = '\n'.join(filtered_lines)
         
         # Formata a mensagem final
         final_text = f"<b>Host Info:</b>\n\n<pre>{html.escape(modified_output)}</pre>"
@@ -144,7 +157,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         await message.delete()
 
     except Exception as e:
-        error_text = f"<b>Error:</b> Could not collect system info.\n<code>{html.escape(str(e))}</code>"
+        error_text = f"<b>Error:</b> Could not run neofetch.\n<code>{html.escape(str(e))}</code>"
         await progress_message.edit_text(error_text)
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await progress_message.delete()
