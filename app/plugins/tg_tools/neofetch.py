@@ -39,23 +39,29 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         if returncode == 0:
             neofetch_logo = """
-__________                
-|__HOST__|                
-|[] [] []|               
-|[] [] []|               
-|[] [] []|               
-|________|                
-     ||      ||          
-     ||      ||          
-___||_________||___      
-|___________________|    
-|    ROUTER /NET    |    
-|___________________|    
-    /           \        
-   /             \       
-___/__________________\___
-|________________________|
-     [ INTERNET ]
+HOST: OptiPlex 3070
+OS: Debian GNU/Linux 12 (bookworm) x86_64
+Kernel: 6.15.10-200.fc42.x86_64
+Uptime: 15h 28m
+Packages: 417 (dpkg)
+Shell: bash 5.2.15
+
+CPU: Intel i3-9100T (4) @ 3.70GHz
+GPU: Intel UHD Graphics 630
+RAM: 3977MiB / 15791MiB
+Disk: 122GB / 500GB (24%)
+
+IP (local): xxx.xxx.x.xx
+IP (public): xxx.xxx.xxx.xxx
+Net: ↑ 25 Mbps | ↓ 930 Mbps
+
+Processes: 214
+Load Avg: 0.21, 0.36, 0.42
+
+CPU [■■■■■■□□]  35%
+RAM [■■■□□□□□]  25%
+DISK[■■■■■□□□]  60%
+NET [↑ 25Mbps ↓ 930Mbps]
 """
     
             final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>\n{neofetch_logo}"
