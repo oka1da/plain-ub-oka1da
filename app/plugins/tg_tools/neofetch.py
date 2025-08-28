@@ -79,29 +79,54 @@ async def neofetch_handler(bot: BOT, message: Message):
             "network_rx": "cat /proc/net/dev | grep eth0 | awk '{print $2/1024/1024}' || echo '0'",
             "network_tx": "cat /proc/net/dev | grep eth0 | awk '{print $10/1024/1024}' || echo '0'",
             "cpu_cores": "nproc",
-            "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1"
+            "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1",
+            "architecture": "uname -m"
         }
         
         info = {}
         for key, cmd in commands.items():
-            stdout_cmd, stderr_cmd, returncode_cmd = await run_command(cmd)
-            info[key] = stdout_cmd if returncode_cmd == 0 and stdout_cmd else "N/A"
+            try:
+                stdout_cmd, stderr_cmd, returncode_cmd = await run_command(cmd)
+                info[key] = stdout_cmd if returncode_cmd == 0 and stdout_cmd else "N/A"
+            except:
+                info[key] = "N/A"
         
         # Aplica máscara nos IPs por segurança
-        masked_ip_local = mask_ip(info['ip_local'])
-        masked_ip_public = mask_ip(info['ip_public'])
+        masked_ip_local = mask_ip(info.get('ip_local', 'N/A'))
+        masked_ip_public = mask_ip(info.get('ip_public', 'N/A'))
         
-        # Formata temperatura da CPU
-        cpu_temp = f"{info['cpu_temp']}°C" if info['cpu_temp'] != "N/A" else "N/A"
-        if info['cpu_temp'] != "N/A":
-            temp_icon = get_temperature_icon(float(info['cpu_temp']))
-            cpu_temp = f"{temp_icon} {cpu_temp}"
+        # Formata temperatura da CPU com tratamento de erro
+        cpu_temp = "N/A"
+        temp_icon = ""
+        if info.get('cpu_temp') != "N/A" and info.get('cpu_temp'):
+            try:
+                temp_value = float(info['cpu_temp'])
+                cpu_temp = f"{temp_value}°C"
+                temp_icon = get_temperature_icon(temp_value)
+                cpu_temp = f"{temp_icon} {cpu_temp}"
+            except (ValueError, TypeError):
+                cpu_temp = "N/A"
         
-        # Formata frequência da CPU
-        cpu_freq = f"{info['cpu_freq']} MHz" if info['cpu_freq'] != "N/A" else "N/A"
+        # Formata frequência da CPU com tratamento de erro
+        cpu_freq = "N/A"
+        if info.get('cpu_freq') != "N/A" and info.get('cpu_freq'):
+            try:
+                cpu_freq = f"{info['cpu_freq']} MHz"
+            except:
+                cpu_freq = "N/A"
         
         # Processa a saída do neofetch
         lines = stdout.split('\n')
+        
+        # Substitui "OS:" por "OS Container/Docker:" em todas as linhas
+        modified_lines = []
+        for line in lines:
+            if line.strip().startswith('OS:'):
+                modified_lines.append(line.replace('OS:', 'OS Container/Docker:'))
+            else:
+                modified_lines.append(line)
+        
+        lines = modified_lines
         
         # Remove linhas que serão substituídas/reorganizadas
         filtered_lines = []
@@ -119,24 +144,37 @@ async def neofetch_handler(bot: BOT, message: Message):
         if insert_position == -1:
             insert_position = len(filtered_lines)
         
+        # Adiciona a informação do OS Host personalizado antes dos grupos
+        filtered_lines.insert(insert_position, f"OS Host: Fedora Server 42 {info.get('architecture', 'x86_64')}")
+        filtered_lines.insert(insert_position, "")  # Linha em branco para separar
+        
         # GRUPO CPU - Todas informações da CPU juntas
         cpu_group = [
-            "CPU: Intel i3-9100T (4) @ 3.700GHz",
-            f"Cores: {info['cpu_cores']}",
+            f"CPU: {info.get('cpu', 'N/A')}",
+            f"Cores: {info.get('cpu_cores', 'N/A')}",
             f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
-            f"Load: {info['load_avg']}"
+            f"Load: {info.get('load_avg', 'N/A')}"
         ]
         
         # GRUPO MEMÓRIA & ARMAZENAMENTO
         memory_group = [
-            "Memory: 4347MiB / 15791MiB",
-            f"Disk: {info['disk']}"
+            f"Memory: {info.get('memory', 'N/A')}",
+            f"Disk: {info.get('disk', 'N/A')}"
         ]
         
-        # GRUPO REDE
+        # GRUPO REDE com tratamento de erro
+        network_tx = 0.0
+        network_rx = 0.0
+        try:
+            network_tx = float(info.get('network_tx', '0'))
+            network_rx = float(info.get('network_rx', '0'))
+        except (ValueError, TypeError):
+            network_tx = 0.0
+            network_rx = 0.0
+        
         network_group = [
-            f"Traffic: ↑{float(info['network_tx']):.1f}MB ↓{float(info['network_rx']):.1f}MB",
+            f"Traffic: ↑{network_tx:.1f}MB ↓{network_rx:.1f}MB",
             f"Local: {masked_ip_local}",
             f"Public: {masked_ip_public}"
         ]
@@ -145,7 +183,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         all_groups = cpu_group + [""] + memory_group + [""] + network_group
         
         for i, group_line in enumerate(reversed(all_groups)):
-            filtered_lines.insert(insert_position, group_line)
+            filtered_lines.insert(insert_position + 2, group_line)  # +2 por causa das linhas adicionadas
         
         # Reconstroi o texto
         modified_output = '\n'.join(filtered_lines)
