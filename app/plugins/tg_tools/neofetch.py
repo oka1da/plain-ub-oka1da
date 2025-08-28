@@ -69,19 +69,15 @@ async def neofetch_handler(bot: BOT, message: Message):
             error_details = stderr or stdout or "Unknown error."
             raise RuntimeError(error_details)
         
-        # Coleta informações adicionais do sistema
+        # Coleta informações adicionais do sistema (removendo users, swap e processes)
         commands = {
             "disk": "df -h / | awk 'NR==2{print $3\"/\"$2 \" (\"$5\")\"}'",
             "ip_local": "hostname -I | awk '{print $1}'",
             "ip_public": "curl -s ifconfig.me",
             "load_avg": "cat /proc/loadavg | awk '{print $1\", \"$2\", \"$3}'",
-            "processes": "ps aux | wc -l",
             "cpu_temp": "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 | awk '{print $1/1000}' || echo 'N/A'",
-            "uptime_days": "uptime | awk '{print $3 $4}' | sed 's/,//'",
             "network_rx": "cat /proc/net/dev | grep eth0 | awk '{print $2/1024/1024}' || echo '0'",
-            "network_tx": "cat /proc/net/dev | grep eth0 | awk '{print $10/1024/1024}' || echo '0'",
-            "swap": "free -h | grep Swap | awk '{print $3\"/\"$2}'",
-            "users": "who | wc -l"
+            "network_tx": "cat /proc/net/dev | grep eth0 | awk '{print $10/1024/1024}' || echo '0'"
         }
         
         info = {}
@@ -109,11 +105,10 @@ async def neofetch_handler(bot: BOT, message: Message):
                 memory_line_index = i
                 break
         
-        # Adiciona informações após a Memory
+        # Adiciona informações após a Memory (apenas disk e CPU temp)
         if memory_line_index != -1:
             lines.insert(memory_line_index + 1, f"Disk: {info['disk']}")
-            lines.insert(memory_line_index + 2, f"Swap: {info['swap']}")
-            lines.insert(memory_line_index + 3, f"CPU Temp: {cpu_temp}")
+            lines.insert(memory_line_index + 2, f"CPU Temp: {cpu_temp}")
         
         # Encontra o final das informações do sistema para adicionar mais info
         end_of_system_info = -1
@@ -121,12 +116,10 @@ async def neofetch_handler(bot: BOT, message: Message):
             if any(x in line for x in ['Resolution:', 'GPU:', 'Uptime:']):
                 end_of_system_info = i
         
-        # Adiciona informações de sistema e rede
+        # Adiciona informações de sistema e rede (removendo processes e users)
         if end_of_system_info != -1:
             additional_info = [
                 f"Load Avg: {info['load_avg']}",
-                f"Processes: {info['processes']}",
-                f"Users: {info['users']}",
                 f"Network: ↑{float(info['network_tx']):.1f}MB ↓{float(info['network_rx']):.1f}MB",
                 f"IP Local: {masked_ip_local}",
                 f"IP Public: {masked_ip_public}"
