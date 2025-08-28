@@ -54,11 +54,13 @@ async def neofetch_handler(bot: BOT, message: Message):
    .;:cccccccccc:;'.
        '.,;::::;,'
 """
-            
-            final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>"
-            
-            await progress_message.edit(final_text)
-            await message.delete()
+
+    final_output = fedora_logo + "\n" + stdout
+
+    final_text = f"<b>Host Info:</b>\n<pre>{html.escape(final_output)}</pre>"
+
+    await progress_message.edit(final_text)
+    await message.delete()
 
         else:
             error_details = stderr or stdout or "Unknown error."
