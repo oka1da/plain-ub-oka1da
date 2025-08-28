@@ -92,57 +92,87 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         # Executa comandos do container
         for key, cmd in container_commands.items():
-            stdout_cmd, stderr_cmd, returncode_cmd = await run_command(cmd)
-            info[key] = stdout_cmd if returncode_cmd == 0 and stdout_cmd else "N/A"
+            try:
+                stdout_cmd, stderr_cmd, returncode_cmd = await run_command(cmd)
+                info[key] = stdout_cmd if returncode_cmd == 0 and stdout_cmd else "N/A"
+            except:
+                info[key] = "N/A"
         
         # Executa comandos do host
         for key, cmd in host_commands.items():
-            stdout_cmd, stderr_cmd, returncode_cmd = await run_command(cmd)
-            info[key] = stdout_cmd if returncode_cmd == 0 and stdout_cmd else "N/A"
+            try:
+                stdout_cmd, stderr_cmd, returncode_cmd = await run_command(cmd)
+                info[key] = stdout_cmd if returncode_cmd == 0 and stdout_cmd else "N/A"
+            except:
+                info[key] = "N/A"
         
         # Aplica máscara nos IPs por segurança
-        masked_ip_local = mask_ip(info['host_ip_local'])
-        masked_ip_public = mask_ip(info['host_ip_public'])
+        masked_ip_local = mask_ip(info.get('host_ip_local', 'N/A'))
+        masked_ip_public = mask_ip(info.get('host_ip_public', 'N/A'))
         
-        # Formata temperatura da CPU
-        cpu_temp = f"{info['host_cpu_temp']}°C" if info['host_cpu_temp'] != "N/A" else "N/A"
-        if info['host_cpu_temp'] != "N/A":
-            temp_icon = get_temperature_icon(float(info['host_cpu_temp']))
-            cpu_temp = f"{temp_icon} {cpu_temp}"
+        # Formata temperatura da CPU com tratamento de erro
+        cpu_temp = "N/A"
+        temp_icon = ""
+        if info.get('host_cpu_temp') != "N/A" and info.get('host_cpu_temp') != "":
+            try:
+                temp_value = float(info['host_cpu_temp'])
+                cpu_temp = f"{temp_value}°C"
+                temp_icon = get_temperature_icon(temp_value)
+                cpu_temp = f"{temp_icon} {cpu_temp}"
+            except (ValueError, TypeError):
+                cpu_temp = "N/A"
         
-        # Formata frequência da CPU
-        cpu_freq = f"{info['host_cpu_freq']} MHz" if info['host_cpu_freq'] != "N/A" else "N/A"
+        # Formata frequência da CPU com tratamento de erro
+        cpu_freq = "N/A"
+        if info.get('host_cpu_freq') != "N/A" and info.get('host_cpu_freq') != "":
+            try:
+                cpu_freq = f"{info['host_cpu_freq']} MHz"
+            except:
+                cpu_freq = "N/A"
         
-        # Formata memória
-        if info['host_memory_used'] != "N/A" and info['host_memory_total'] != "N/A":
-            mem_used_mb = int(int(info['host_memory_used']) / 1024 / 1024)
-            mem_total_mb = int(int(info['host_memory_total']) / 1024 / 1024)
-            memory_info = f"{mem_used_mb}MiB / {mem_total_mb}MiB"
-        else:
-            memory_info = "N/A"
+        # Formata memória com tratamento de erro
+        memory_info = "N/A"
+        if (info.get('host_memory_used') != "N/A" and info.get('host_memory_total') != "N/A" and
+            info.get('host_memory_used') != "" and info.get('host_memory_total') != ""):
+            try:
+                mem_used_mb = int(int(info['host_memory_used']) / 1024 / 1024)
+                mem_total_mb = int(int(info['host_memory_total']) / 1024 / 1024)
+                memory_info = f"{mem_used_mb}MiB / {mem_total_mb}MiB"
+            except (ValueError, TypeError):
+                memory_info = "N/A"
+        
+        # Formata tráfego de rede com tratamento de erro
+        network_tx = 0.0
+        network_rx = 0.0
+        try:
+            network_tx = float(info.get('host_network_tx', '0'))
+            network_rx = float(info.get('host_network_rx', '0'))
+        except (ValueError, TypeError):
+            network_tx = 0.0
+            network_rx = 0.0
         
         # Constrói a saída com ambas as informações
         lines = [
-            f"Host: {info['host_name']}",
-            f"OS Container: {info['container_os']} {info['host_architecture']}",
-            f"OS Host: Fedora Server 42 {info['host_architecture']}",
-            f"Kernel: {info['container_kernel']}",
-            f"Uptime: {info['host_uptime']}",
-            f"Shell: {info['host_shell']}",
+            f"Host: {info.get('host_name', 'N/A')}",
+            f"OS Container: {info.get('container_os', 'N/A')} {info.get('host_architecture', 'N/A')}",
+            f"OS Host: Fedora Server 42 {info.get('host_architecture', 'N/A')}",
+            f"Kernel: {info.get('container_kernel', 'N/A')}",
+            f"Uptime: {info.get('host_uptime', 'N/A')}",
+            f"Shell: {info.get('host_shell', 'N/A')}",
             "",
             # GRUPO CPU
-            f"CPU: {info['host_cpu']}",
-            f"Cores: {info['host_cpu_cores']}",
+            f"CPU: {info.get('host_cpu', 'N/A')}",
+            f"Cores: {info.get('host_cpu_cores', 'N/A')}",
             f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
-            f"Load: {info['host_load_avg']}",
+            f"Load: {info.get('host_load_avg', 'N/A')}",
             "",
             # GRUPO MEMÓRIA & ARMAZENAMENTO
             f"Memory: {memory_info}",
-            f"Disk: {info['host_disk']}",
+            f"Disk: {info.get('host_disk', 'N/A')}",
             "",
             # GRUPO REDE
-            f"Traffic: ↑{float(info['host_network_tx']):.1f}MB ↓{float(info['host_network_rx']):.1f}MB",
+            f"Traffic: ↑{network_tx:.1f}MB ↓{network_rx:.1f}MB",
             f"Local: {masked_ip_local}",
             f"Public: {masked_ip_public}"
         ]
