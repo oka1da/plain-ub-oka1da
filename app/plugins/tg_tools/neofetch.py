@@ -26,14 +26,14 @@ async def run_command(command: str) -> tuple[str, str, int]:
 def mask_ip(ip_address: str) -> str:
     """
     Masks the IP address for security (shows only first half).
-    Example: 192.168.1.100 → 192.168.*.*
+    Example: 192.168.1.100 → 192.168.***.***
     """
     if not ip_address or ip_address == "N/A":
         return "N/A"
     
     parts = ip_address.split('.')
     if len(parts) == 4:
-        return f"{parts[0]}.{parts[1]}.*.*"
+        return f"{parts[0]}.{parts[1]}.***.***"
     else:
         return ip_address
 
@@ -69,7 +69,7 @@ async def neofetch_handler(bot: BOT, message: Message):
             error_details = stderr or stdout or "Unknown error."
             raise RuntimeError(error_details)
         
-        # Coleta informações adicionais do sistema (removendo users, swap e processes)
+        # Coleta informações adicionais do sistema
         commands = {
             "disk": "df -h / | awk 'NR==2{print $3\"/\"$2 \" (\"$5\")\"}'",
             "ip_local": "hostname -I | awk '{print $1}'",
@@ -77,7 +77,9 @@ async def neofetch_handler(bot: BOT, message: Message):
             "load_avg": "cat /proc/loadavg | awk '{print $1\", \"$2\", \"$3}'",
             "cpu_temp": "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 | awk '{print $1/1000}' || echo 'N/A'",
             "network_rx": "cat /proc/net/dev | grep eth0 | awk '{print $2/1024/1024}' || echo '0'",
-            "network_tx": "cat /proc/net/dev | grep eth0 | awk '{print $10/1024/1024}' || echo '0'"
+            "network_tx": "cat /proc/net/dev | grep eth0 | awk '{print $10/1024/1024}' || echo '0'",
+            "cpu_cores": "nproc",
+            "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1"
         }
         
         info = {}
@@ -95,15 +97,92 @@ async def neofetch_handler(bot: BOT, message: Message):
             temp_icon = get_temperature_icon(float(info['cpu_temp']))
             cpu_temp = f"{temp_icon} {cpu_temp}"
         
-        # Processa a saída do neofetch para inserir as informações no lugar certo
+        # Formata frequência da CPU
+        cpu_freq = f"{info['cpu_freq']} MHz" if info['cpu_freq'] != "N/A" else "N/A"
+        
+        # Processa a saída do neofetch
         lines = stdout.split('\n')
         
-        # Encontra a linha da Memory para inserir informações após
+        # Remove linhas desnecessárias do neofetch para reorganizar
+        filtered_lines = []
+        for line in lines:
+            if not any(x in line for x in ['Memory:', 'Disk:']):
+                filtered_lines.append(line)
+        
+        # Encontra a linha da CPU para agrupar informações de CPU
+        cpu_line_index = -1
+        for i, line in enumerate(filtered_lines):
+            if line.strip().startswith('CPU:'):
+                cpu_line_index = i
+                break
+        
+        # Adiciona informações de CPU agrupadas
+        if cpu_line_index != -1:
+            cpu_info = [
+                f"CPU: {filtered_lines[cpu_line_index].split('CPU:')[1].strip()}",
+                f"Cores: {info['cpu_cores']}",
+                f"Freq: {cpu_freq}",
+                f"Temp: {cpu_temp}",
+                f"Load: {info['load_avg']}"
+            ]
+            # Remove a linha original da CPU e insere o grupo
+            del filtered_lines[cpu_line_index]
+            for j, cpu_line in enumerate(reversed(cpu_info)):
+                filtered_lines.insert(cpu_line_index, cpu_line)
+        
+        # Encontra a linha de Memory para agrupar informações de armazenamento
         memory_line_index = -1
-        for i, line in enumerate(lines):
+        for i, line in enumerate(filtered_lines):
             if line.strip().startswith('Memory:'):
                 memory_line_index = i
                 break
         
-        # Adiciona informações após a Memory (apenas disk e CPU temp)
-        if memory_line_index != -1:                
+        # Adiciona informações de memória e armazenamento agrupadas
+        if memory_line_index != -1:
+            storage_info = [
+                f"Memory: {filtered_lines[memory_line_index].split('Memory:')[1].strip()}",
+                f"Disk: {info['disk']}"
+            ]
+            # Remove a linha original da Memory e insere o grupo
+            del filtered_lines[memory_line_index]
+            for j, storage_line in enumerate(reversed(storage_info)):
+                filtered_lines.insert(memory_line_index, storage_line)
+        
+        # Encontra o final das informações do sistema para adicionar rede
+        end_of_system_info = -1
+        for i, line in enumerate(filtered_lines):
+            if any(x in line for x in ['Resolution:', 'GPU:']):
+                end_of_system_info = i
+                break
+        
+        # Adiciona informações de rede agrupadas
+        if end_of_system_info != -1:
+            network_info = [
+                "--- Network ---",
+                f"Traffic: ↑{float(info['network_tx']):.1f}MB ↓{float(info['network_rx']):.1f}MB",
+                f"Local IP: {masked_ip_local}",
+                f"Public IP: {masked_ip_public}"
+            ]
+            
+            for j, network_line in enumerate(reversed(network_info)):
+                filtered_lines.insert(end_of_system_info + 1, network_line)
+        
+        # Reconstroi o texto
+        modified_output = '\n'.join(filtered_lines)
+        
+        # Formata a mensagem final
+        final_text = f"<b>Host Info:</b>\n\n<pre>{html.escape(modified_output)}</pre>\n\n"
+        final_text += "<b>COPIAR CÓDIGO</b>"
+        
+        await progress_message.edit_text(final_text)
+        await message.delete()
+
+    except Exception as e:
+        error_text = f"<b>Error:</b> Could not run neofetch.\n<code>{html.escape(str(e))}</code>"
+        await progress_message.edit_text(error_text)
+        await asyncio.sleep(ERROR_VISIBLE_DURATION)
+        await progress_message.delete()
+        try:
+            await message.delete()
+        except Exception:
+            pass 
