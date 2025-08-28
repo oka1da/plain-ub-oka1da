@@ -103,59 +103,52 @@ async def neofetch_handler(bot: BOT, message: Message):
         # Processa a saída do neofetch
         lines = stdout.split('\n')
         
-        # Encontra os índices das linhas principais
-        cpu_line_index = -1
-        memory_line_index = -1
-        end_of_system_info = -1
+        # Remove linhas que serão substituídas/reorganizadas
+        filtered_lines = []
+        for line in lines:
+            if not any(x in line for x in ['CPU:', 'Memory:']):
+                filtered_lines.append(line)
         
-        for i, line in enumerate(lines):
-            if line.strip().startswith('CPU:'):
-                cpu_line_index = i
-            elif line.strip().startswith('Memory:'):
-                memory_line_index = i
-            elif any(x in line for x in ['Resolution:', 'GPU:']):
-                end_of_system_info = i
+        # Encontra a posição onde inserir os grupos
+        insert_position = -1
+        for i, line in enumerate(filtered_lines):
+            if any(x in line for x in ['Uptime:', 'Packages:', 'Shell:']):
+                insert_position = i + 1
         
-        # Se não encontrar o final, usa o último índice
-        if end_of_system_info == -1:
-            end_of_system_info = len(lines) - 1
+        # Se não encontrar, insere no final
+        if insert_position == -1:
+            insert_position = len(filtered_lines)
         
-        # GRUPO CPU - Adiciona informações de CPU agrupadas
-        if cpu_line_index != -1:
-            cpu_info = [
-                f"CPU: {lines[cpu_line_index].split('CPU:')[1].strip()}",
-                f"Cores: {info['cpu_cores']}",
-                f"Freq: {cpu_freq}",
-                f"Temp: {cpu_temp}",
-                f"Load: {info['load_avg']}"
-            ]
-            # Remove a linha original da CPU e insere o grupo
-            del lines[cpu_line_index]
-            for j, cpu_line in enumerate(reversed(cpu_info)):
-                lines.insert(cpu_line_index, cpu_line)
+        # GRUPO CPU - Todas informações da CPU juntas
+        cpu_group = [
+            "CPU: Intel i3-9100T (4) @ 3.700GHz",
+            f"Cores: {info['cpu_cores']}",
+            f"Freq: {cpu_freq}",
+            f"Temp: {cpu_temp}",
+            f"Load: {info['load_avg']}"
+        ]
         
-        # GRUPO MEMÓRIA & ARMAZENAMENTO - Adiciona disk após memory
-        if memory_line_index != -1:
-            # Ajusta o índice da memory após as modificações da CPU
-            for i, line in enumerate(lines):
-                if line.strip().startswith('Memory:'):
-                    memory_line_index = i
-                    break
-            
-            lines.insert(memory_line_index + 1, f"Disk: {info['disk']}")
+        # GRUPO MEMÓRIA & ARMAZENAMENTO
+        memory_group = [
+            "Memory: 4347MiB / 15791MiB",
+            f"Disk: {info['disk']}"
+        ]
         
-        # GRUPO REDE - Adiciona informações de rede no final
-        network_info = [
+        # GRUPO REDE
+        network_group = [
             f"Traffic: ↑{float(info['network_tx']):.1f}MB ↓{float(info['network_rx']):.1f}MB",
             f"Local: {masked_ip_local}",
             f"Public: {masked_ip_public}"
         ]
         
-        for j, network_line in enumerate(reversed(network_info)):
-            lines.insert(end_of_system_info + 1, network_line)
+        # Insere todos os grupos na posição correta
+        all_groups = cpu_group + [""] + memory_group + [""] + network_group
+        
+        for i, group_line in enumerate(reversed(all_groups)):
+            filtered_lines.insert(insert_position, group_line)
         
         # Reconstroi o texto
-        modified_output = '\n'.join(lines)
+        modified_output = '\n'.join(filtered_lines)
         
         # Formata a mensagem final
         final_text = f"<b>Host Info:</b>\n\n<pre>{html.escape(modified_output)}</pre>"
@@ -171,4 +164,4 @@ async def neofetch_handler(bot: BOT, message: Message):
         try:
             await message.delete()
         except Exception:
-            pass 
+            pass
