@@ -60,7 +60,7 @@ async def neofetch_handler(bot: BOT, message: Message):
 : +555555555555sssssss++-
 . \+00555500+/-
 """
-    final_text = f"<b>Host Info:</b>\n\n{neofetch_logo}\n<pre>{html.escape(stdout)}</pre>"
+    final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>\n\n{neofetch_logo}"
     
     await progress_message.edit(final_text)
     await message.delete()
