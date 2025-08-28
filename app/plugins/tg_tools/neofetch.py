@@ -23,6 +23,20 @@ async def run_command(command: str) -> tuple[str, str, int]:
         process.returncode
     )
 
+def mask_ip(ip_address: str) -> str:
+    """
+    Masks the IP address for security (shows only first half).
+    Example: 192.168.1.100 → 192.168.***.***
+    """
+    if not ip_address or ip_address == "N/A":
+        return "N/A"
+    
+    parts = ip_address.split('.')
+    if len(parts) == 4:
+        return f"{parts[0]}.{parts[1]}.***.***"
+    else:
+        return ip_address  # Retorna original se não for IPv4
+
 
 @bot.add_cmd(cmd="neofetch")
 async def neofetch_handler(bot: BOT, message: Message):
@@ -51,6 +65,10 @@ async def neofetch_handler(bot: BOT, message: Message):
         ip_local, _, _ = await run_command(ip_local_cmd)
         ip_public, _, _ = await run_command(ip_public_cmd)
         
+        # Aplica máscara nos IPs por segurança
+        masked_ip_local = mask_ip(ip_local)
+        masked_ip_public = mask_ip(ip_public)
+        
         # Processa a saída do neofetch para inserir as informações no lugar certo
         lines = stdout.split('\n')
         
@@ -66,7 +84,6 @@ async def neofetch_handler(bot: BOT, message: Message):
             lines.insert(memory_line_index + 1, f"Disk: {disk_info if disk_info else 'N/A'}")
         
         # Encontra o final das informações do sistema para adicionar IPs
-        # Geralmente após a linha GPU ou Resolution
         end_of_system_info = -1
         for i, line in enumerate(lines):
             if any(x in line for x in ['Resolution:', 'GPU:', 'Uptime:']):
@@ -74,8 +91,8 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         # Adiciona linhas de IP após as informações do sistema
         if end_of_system_info != -1:
-            lines.insert(end_of_system_info + 1, f"IP Local: {ip_local if ip_local else 'N/A'}")
-            lines.insert(end_of_system_info + 2, f"IP Public: {ip_public if ip_public else 'N/A'}")
+            lines.insert(end_of_system_info + 1, f"IP Local: {masked_ip_local}")
+            lines.insert(end_of_system_info + 2, f"IP Public: {masked_ip_public}")
         
         # Reconstroi o texto
         modified_output = '\n'.join(lines)
@@ -95,4 +112,4 @@ async def neofetch_handler(bot: BOT, message: Message):
         try:
             await message.delete()
         except Exception:
-            pass 
+            pass
