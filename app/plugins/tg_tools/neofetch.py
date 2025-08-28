@@ -1,11 +1,15 @@
 import asyncio
 import html
 from pyrogram.types import Message
+
 from app import BOT, bot
 
 ERROR_VISIBLE_DURATION = 8
 
 async def run_command(command: str) -> tuple[str, str, int]:
+    """
+    Asynchronously runs a shell command and captures its output, error, and return code.
+    """
     process = await asyncio.create_subprocess_shell(
         command,
         stdout=asyncio.subprocess.PIPE,
@@ -19,87 +23,76 @@ async def run_command(command: str) -> tuple[str, str, int]:
         process.returncode
     )
 
+
 @bot.add_cmd(cmd="neofetch")
 async def neofetch_handler(bot: BOT, message: Message):
-    progress_message = await message.reply("<code>Collecting system information...</code>")
+    """
+    CMD: NEOFETCH
+    INFO: Runs the neofetch command and displays the output with additional disk and IP info.
+    USAGE: .neofetch
+    """
+    
+    progress_message = await message.reply("<code>Running neofetch...</code>")
     
     try:
-        # Comandos específicos para o formato desejado
-        commands = {
-            "hostname": "hostname",
-            "os": "cat /etc/os-release | grep PRETTY_NAME | cut -d=' -f2 | tr -d '\"'",
-            "kernel": "uname -r",
-            "uptime": "uptime -p | sed 's/up //'",
-            "packages": "dpkg --list | wc -l",
-            "shell": "echo $SHELL | xargs basename",
-            "cpu": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //'",
-            "memory_total": "free -b | grep Mem | awk '{print $2}'",
-            "memory_used": "free -b | grep Mem | awk '{print $3}'",
-            "disk_used": "df -h / | awk 'NR==2{print $3}'",
-            "disk_total": "df -h / | awk 'NR==2{print $2}'",
-            "disk_percent": "df / | awk 'NR==2{print $5}'",
-            "ip_local": "hostname -I | awk '{print $1}'",
-            "ip_public": "curl -s ifconfig.me",
-            "load_avg": "cat /proc/loadavg | awk '{print $1\", \"$2\", \"$3}'",
-            "process_count": "ps aux | wc -l",
-            "top_processes": "ps aux --sort=-%cpu | head -6 | awk '{if(NR>1) printf \"%s, %s, %s%%\\n\", $2, $11, $3}'"
-        }
+        # Executa o neofetch
+        stdout, stderr, returncode = await run_command("neofetch --stdout")
         
-        info = {}
-        for key, cmd in commands.items():
-            stdout, stderr, returncode = await run_command(cmd)
-            if returncode == 0 and stdout:
-                info[key] = stdout
-            else:
-                info[key] = ""
+        if returncode != 0:
+            error_details = stderr or stdout or "Unknown error."
+            raise RuntimeError(error_details)
         
-        # Formatação EXATA da segunda imagem
-        final_message = "<code>"
-        final_message += f"HOST: {info['hostname']}\n"
-        final_message += f"OS: {info['os']}\n"
-        final_message += f"Kernel: {info['kernel']}\n"
-        final_message += f"Uptime: {info['uptime']}\n"
-        final_message += f"Packages: {info['packages']} (dpkg)\n"
-        final_message += f"Shell: {info['shell']}\n\n"
+        # Coleta informações adicionais de disk e IP
+        disk_cmd = "df -h / | awk 'NR==2{print $3\"/\"$2 \" (\"$5\")\"}'"
+        ip_local_cmd = "hostname -I | awk '{print $1}'"
+        ip_public_cmd = "curl -s ifconfig.me"
         
-        final_message += f"CPU: {info['cpu']}\n"
+        disk_info, _, _ = await run_command(disk_cmd)
+        ip_local, _, _ = await run_command(ip_local_cmd)
+        ip_public, _, _ = await run_command(ip_public_cmd)
         
-        # Memória formatada como na imagem (vazio se não disponível)
-        if info['memory_used'] and info['memory_total']:
-            mem_used_mb = int(int(info['memory_used']) / 1024 / 1024)
-            mem_total_mb = int(int(info['memory_total']) / 1024 / 1024)
-            final_message += f"Memory: {mem_used_mb}MiB / {mem_total_mb}MiB\n"
-        else:
-            final_message += f"Memory: \n"
+        # Processa a saída do neofetch para inserir as informações no lugar certo
+        lines = stdout.split('\n')
         
-        final_message += f"GPU: \n"  # Vazio como na imagem
+        # Encontra a linha da Memory para inserir Disk depois
+        memory_line_index = -1
+        for i, line in enumerate(lines):
+            if line.strip().startswith('Memory:'):
+                memory_line_index = i
+                break
         
-        # Disk formatado exatamente como na imagem
-        if info['disk_used'] and info['disk_total'] and info['disk_percent']:
-            final_message += f"Disk: {info['disk_used']} / {info['disk_total']} ({info['disk_percent']})\n\n"
-        else:
-            final_message += f"Disk: \n\n"
+        # Adiciona a linha do Disk após a Memory
+        if memory_line_index != -1:
+            lines.insert(memory_line_index + 1, f"Disk: {disk_info if disk_info else 'N/A'}")
         
-        final_message += f"IP Local: {info['ip_local']}\n"
-        final_message += f"IP Público: {info['ip_public']}\n"
-        final_message += f"Load Average: {info['load_avg']}\n"
-        final_message += f"Processos: {info['process_count']}\n\n"
+        # Encontra o final das informações do sistema para adicionar IPs
+        # Geralmente após a linha GPU ou Resolution
+        end_of_system_info = -1
+        for i, line in enumerate(lines):
+            if any(x in line for x in ['Resolution:', 'GPU:', 'Uptime:']):
+                end_of_system_info = i
         
-        final_message += "Top Processos (PID, CMD, CPU%):\n"
-        if info['top_processes']:
-            final_message += f"{info['top_processes']}\n"
-        else:
-            final_message += f"\n"  # Vazio como na imagem
+        # Adiciona linhas de IP após as informações do sistema
+        if end_of_system_info != -1:
+            lines.insert(end_of_system_info + 1, f"IP Local: {ip_local if ip_local else 'N/A'}")
+            lines.insert(end_of_system_info + 2, f"IP Public: {ip_public if ip_public else 'N/A'}")
         
-        final_message += "</code>"
+        # Reconstroi o texto
+        modified_output = '\n'.join(lines)
         
-        # Adiciona o "COPIAR CÓDIGO" igual na imagem
-        final_message += "\n---\n<b>COPIAR CÓDIGO</b>"
+        # Formata a mensagem final
+        final_text = f"<b>Host Info:</b>\n\n<pre>{html.escape(modified_output)}</pre>\n\n"
+        final_text += "<b>COPIAR CÓDIGO</b>"
         
-        await progress_message.edit_text(final_message)
-        
+        await progress_message.edit_text(final_text)
+        await message.delete()
+
     except Exception as e:
-        error_msg = f"<b>❌ Error:</b>\n<code>{html.escape(str(e))}</code>"
-        await progress_message.edit_text(error_msg)
+        error_text = f"<b>Error:</b> Could not run neofetch.\n<code>{html.escape(str(e))}</code>"
+        await progress_message.edit_text(error_text)
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await progress_message.delete()
+        try:
+            await message.delete()
+        except Exception:
+            pass 
