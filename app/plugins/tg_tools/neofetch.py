@@ -1,4 +1,4 @@
-import asyncio
+ import asyncio
 import html
 from pyrogram.types import Message
 
@@ -103,15 +103,9 @@ async def neofetch_handler(bot: BOT, message: Message):
         # Processa a saída do neofetch
         lines = stdout.split('\n')
         
-        # Remove linhas desnecessárias do neofetch para reorganizar
-        filtered_lines = []
-        for line in lines:
-            if not any(x in line for x in ['Memory:', 'Disk:']):
-                filtered_lines.append(line)
-        
         # Encontra a linha da CPU para agrupar informações de CPU
         cpu_line_index = -1
-        for i, line in enumerate(filtered_lines):
+        for i, line in enumerate(lines):
             if line.strip().startswith('CPU:'):
                 cpu_line_index = i
                 break
@@ -119,57 +113,52 @@ async def neofetch_handler(bot: BOT, message: Message):
         # Adiciona informações de CPU agrupadas
         if cpu_line_index != -1:
             cpu_info = [
-                f"CPU: {filtered_lines[cpu_line_index].split('CPU:')[1].strip()}",
+                f"CPU: {lines[cpu_line_index].split('CPU:')[1].strip()}",
                 f"Cores: {info['cpu_cores']}",
                 f"Freq: {cpu_freq}",
                 f"Temp: {cpu_temp}",
                 f"Load: {info['load_avg']}"
             ]
             # Remove a linha original da CPU e insere o grupo
-            del filtered_lines[cpu_line_index]
+            del lines[cpu_line_index]
             for j, cpu_line in enumerate(reversed(cpu_info)):
-                filtered_lines.insert(cpu_line_index, cpu_line)
+                lines.insert(cpu_line_index, cpu_line)
         
-        # Encontra a linha de Memory para agrupar informações de armazenamento
+        # Encontra a linha de Memory para adicionar informações de armazenamento
         memory_line_index = -1
-        for i, line in enumerate(filtered_lines):
+        for i, line in enumerate(lines):
             if line.strip().startswith('Memory:'):
                 memory_line_index = i
                 break
         
-        # Adiciona informações de memória e armazenamento agrupadas
+        # Adiciona informações de disk após a memory
         if memory_line_index != -1:
-            storage_info = [
-                f"Memory: {filtered_lines[memory_line_index].split('Memory:')[1].strip()}",
-                f"Disk: {info['disk']}"
-            ]
-            # Remove a linha original da Memory e insere o grupo
-            del filtered_lines[memory_line_index]
-            for j, storage_line in enumerate(reversed(storage_info)):
-                filtered_lines.insert(memory_line_index, storage_line)
+            lines.insert(memory_line_index + 1, f"Disk: {info['disk']}")
         
         # Encontra o final das informações do sistema para adicionar rede
         end_of_system_info = -1
-        for i, line in enumerate(filtered_lines):
+        for i, line in enumerate(lines):
             if any(x in line for x in ['Resolution:', 'GPU:']):
                 end_of_system_info = i
                 break
+        if end_of_system_info == -1:
+            # Se não encontrar, usa o final da lista
+            end_of_system_info = len(lines) - 1
         
-        # Adiciona informações de rede agrupadas (sem o texto "--- Network ---")
-        if end_of_system_info != -1:
-            network_info = [
-                f"Traffic: ↑{float(info['network_tx']):.1f}MB ↓{float(info['network_rx']):.1f}MB",
-                f"Local: {masked_ip_local}",
-                f"Public: {masked_ip_public}"
-            ]
-            
-            for j, network_line in enumerate(reversed(network_info)):
-                filtered_lines.insert(end_of_system_info + 1, network_line)
+        # Adiciona informações de rede
+        network_info = [
+            f"Traffic: ↑{float(info['network_tx']):.1f}MB ↓{float(info['network_rx']):.1f}MB",
+            f"IP Local: {masked_ip_local}",
+            f"IP Public: {masked_ip_public}"
+        ]
+        
+        for j, network_line in enumerate(reversed(network_info)):
+            lines.insert(end_of_system_info + 1, network_line)
         
         # Reconstroi o texto
-        modified_output = '\n'.join(filtered_lines)
+        modified_output = '\n'.join(lines)
         
-        # Formata a mensagem final (sem o "COPIAR CÓDIGO")
+        # Formata a mensagem final
         final_text = f"<b>Host Info:</b>\n\n<pre>{html.escape(modified_output)}</pre>"
         
         await progress_message.edit_text(final_text)
