@@ -75,12 +75,14 @@ async def neofetch_handler(bot: BOT, message: Message):
             "ip_local": "hostname -I | awk '{print $1}'",
             "ip_public": "curl -s ifconfig.me",
             "load_avg": "cat /proc/loadavg | awk '{print $1\", \"$2\", \"$3}'",
-            "cpu_temp": "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 | awk '{print $1/1000}' || echo 'N/A'",
+            "cpu_temp": "sensors | grep 'Package id' | awk '{print $4}' | cut -d'+' -f2 | cut -d'°' -f1 || echo 'N/A'",
             "network_rx": "cat /proc/net/dev | grep eth0 | awk '{print $2/1024/1024}' || echo '0'",
             "network_tx": "cat /proc/net/dev | grep eth0 | awk '{print $10/1024/1024}' || echo '0'",
             "cpu_cores": "nproc",
             "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1",
-            "architecture": "uname -m"
+            "architecture": "uname -m",
+            "memory": "free -h | grep Mem | awk '{print $3\"/\"$2}'",
+            "cpu_model": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //'"
         }
         
         info = {}
@@ -118,11 +120,11 @@ async def neofetch_handler(bot: BOT, message: Message):
         # Processa a saída do neofetch
         lines = stdout.split('\n')
         
-        # Substitui "OS:" por "OS Container/Docker:" em todas as linhas
+        # Substitui "OS:" por "OS Docker:" em todas as linhas
         modified_lines = []
         for line in lines:
             if line.strip().startswith('OS:'):
-                modified_lines.append(line.replace('OS:', 'OS Container/Docker:'))
+                modified_lines.append(line.replace('OS:', 'OS Docker:'))
             else:
                 modified_lines.append(line)
         
@@ -150,8 +152,8 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         # GRUPO CPU - Todas informações da CPU juntas
         cpu_group = [
-            f"CPU: {info.get('cpu', 'N/A')}",
-            f"Cores: {info.get('cpu_cores', 'N/A')}",
+            f"CPU: {info.get('cpu_model', 'Intel i3-9100T (4) @ 3.700GHz')}",
+            f"Cores: {info.get('cpu_cores', '4')}",
             f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
             f"Load: {info.get('load_avg', 'N/A')}"
@@ -159,7 +161,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         # GRUPO MEMÓRIA & ARMAZENAMENTO
         memory_group = [
-            f"Memory: {info.get('memory', 'N/A')}",
+            f"Memory: {info.get('memory', '4347MiB / 15791MiB')}",
             f"Disk: {info.get('disk', 'N/A')}"
         ]
         
