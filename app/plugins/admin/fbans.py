@@ -264,7 +264,7 @@ async def _perform_fed_task(
         f"\n<b>ID</b>: {user_id}"
         f"\n<b>Reason</b>: {reason}"
         f"\n<b>Initiated in</b>: {message.chat.title or 'PM'}"
-        f"\n<b>{task_type}ned by: @oka1da</b>
+        f"\n<b>{task_type}ned by: @oka1da</b>"
     )
 
     if failed:
