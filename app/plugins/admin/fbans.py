@@ -259,14 +259,17 @@ async def _perform_fed_task(
         await progress.edit("You Don't have any feds connected!")
         return
 
-    # FORMATO CORRIGIDO: Status em linha separada abaixo do Initiated in
+    # CORREÇÃO: Diferencia entre Fban e Un-FBan
+    action = "FBanned" if task_type.lower() == "fban" else "Un-FBanned"
+    signature = "FBanned by: @oka1da" if task_type.lower() == "fban" else "Un-FBanned by @oka1da"
+    
     resp_str = (
-        f">>> FBanned {user_mention}\n"
+        f">>> {action} {user_mention}\n"
         f"ID: {user_id}\n"
         f"Reason: {reason}\n"
         f"Initiated in: {message.chat.title or 'PM'}\n"
         f"Status: {task_type}ned in {total} feds.\n"
-        f"FBanned by: @oka1da"
+        f"{signature}"
     )
 
     if failed:
@@ -296,4 +299,4 @@ async def handle_sudo_fban(command: str):
     no_recurse_cmd = " ".join((head, "-nrc", body))
     await bot.send_message(
         chat_id=extra_config.FBAN_SUDO_ID, text=no_recurse_cmd, disable_preview=True
-        )
+    )
