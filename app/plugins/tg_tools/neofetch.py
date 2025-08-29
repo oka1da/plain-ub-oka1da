@@ -37,17 +37,6 @@ def mask_ip(ip_address: str) -> str:
     else:
         return ip_address
 
-def get_cpu_usage_icon(usage: float) -> str:
-    """
-    Returns a CPU usage icon based on usage percentage.
-    """
-    if usage < 30:
-        return "🟢"  # Baixo uso
-    elif usage < 70:
-        return "🟡"  # Uso moderado
-    else:
-        return "🔴"  # Alto uso
-
 
 @bot.add_cmd(cmd="neofetch")
 async def neofetch_handler(bot: BOT, message: Message):
@@ -67,17 +56,13 @@ async def neofetch_handler(bot: BOT, message: Message):
             error_details = stderr or stdout or "Unknown error."
             raise RuntimeError(error_details)
         
-        # Coleta informações adicionais do sistema - COMANDOS ATUALIZADOS
+        # Coleta informações adicionais do sistema - COMANDOS SIMPLIFICADOS
         commands = {
             "disk": "df -h / | awk 'NR==2{print $3\"/\"$2 \" (\"$5\")\"}'",
             "ip_local": "hostname -I | awk '{print $1}'",
             "ip_public": "curl -s ifconfig.me",
             "load_avg": "cat /proc/loadavg | awk '{print $1\", \"$2\", \"$3}'",
-            # NOVOS COMANDOS ADICIONADOS:
-            "cpu_usage": "top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1 || echo '0'",
-            "cpu_arch": "lscpu | grep 'Architecture' | awk '{print $2}' || uname -m",
-            "cpu_virtualization": "lscpu | grep 'Virtualization' | awk '{print $3}' || echo 'VT-x'",
-            # COMANDOS EXISTENTES:
+            # REMOVIDOS: cpu_usage, cpu_arch, cpu_virtualization (substituídos por valores fixos)
             "network_rx": "cat /proc/net/dev | grep -E '(eth|enp|wlp)' | head -1 | awk '{print $2/1024/1024}' || echo '333.2'",
             "network_tx": "cat /proc/net/dev | grep -E '(eth|enp|wlp)' | head -1 | awk '{print $10/1024/1024}' || echo '138.2'",
             "cpu_cores": "nproc",
@@ -100,17 +85,6 @@ async def neofetch_handler(bot: BOT, message: Message):
         masked_ip_local = mask_ip(info.get('ip_local', 'N/A'))
         masked_ip_public = mask_ip(info.get('ip_public', 'N/A'))
         
-        # Formata uso da CPU
-        cpu_usage = "0%"
-        usage_icon = "🟢"
-        if info.get('cpu_usage') != "N/A" and info.get('cpu_usage'):
-            try:
-                usage_value = float(info['cpu_usage'])
-                usage_icon = get_cpu_usage_icon(usage_value)
-                cpu_usage = f"{usage_icon} {usage_value}%"
-            except (ValueError, TypeError):
-                cpu_usage = f"{usage_icon} 0%"
-        
         # Formata frequência da CPU
         cpu_freq = "2700 MHz"
         if info.get('cpu_freq') != "N/A" and info.get('cpu_freq'):
@@ -119,6 +93,11 @@ async def neofetch_handler(bot: BOT, message: Message):
                 cpu_freq = f"{freq_value} MHz"
             except (ValueError, TypeError):
                 cpu_freq = "2700 MHz"
+        
+        # INFORMAÇÕES FIXAS PARA CPU INTEL i3-9100T
+        cpu_cache_fixed = "6MB"          # Cache L3 do i3-9100T
+        cpu_arch_fixed = "x86_64"        # Arquitetura
+        cpu_vt_fixed = "VT-x"            # Virtualização Intel
         
         # Processa a saída do neofetch
         lines = stdout.split('\n')
@@ -170,7 +149,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         if insert_position == -1:
             insert_position = len(filtered_lines)
         
-        # GRUPO CPU - INFORMAÇÕES ADICIONAIS (com a linha principal da CPU no topo)
+        # GRUPO CPU - INFORMAÇÕES ESTÁTICAS PRECISAS
         cpu_group = []
         if cpu_line:
             cpu_group.append(cpu_line)  # Adiciona a linha principal da CPU primeiro
@@ -178,10 +157,10 @@ async def neofetch_handler(bot: BOT, message: Message):
         cpu_group.extend([
             f"Cores: {info.get('cpu_cores', '4')}",
             f"Freq: {cpu_freq}",
-            f"Usage: {cpu_usage}",  # Uso da CPU em vez de temperatura
-            f"Arch: {info.get('cpu_arch', 'x86_64')}",  # Arquitetura da CPU
-            f"VT: {info.get('cpu_virtualization', 'VT-x')}",  # Virtualização
-            f"Load: {info.get('load_avg', '0.19, 0.17, 0.17')}"
+            f"Cache: {cpu_cache_fixed}",      # Cache L3 fixo
+            f"Arch: {cpu_arch_fixed}",        # Arquitetura fixa
+            f"VT: {cpu_vt_fixed}",            # Virtualização fixa
+            f"Load: {info.get('load_avg', '0.19, 0.17, 0.17')}"  # Load real-time
         ])
         
         # GRUPO MEMÓRIA & ARMAZENAMENTO
@@ -194,7 +173,7 @@ async def neofetch_handler(bot: BOT, message: Message):
             f"Disk: {info.get('disk', '7.3G/118G (7%)')}"
         ]
         
-        # GRUPO REDE - COM NOVOS RÓTULOS
+        # GRUPO REDE
         network_tx = 138.2
         network_rx = 333.2
         try:
