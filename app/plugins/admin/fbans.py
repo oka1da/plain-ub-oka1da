@@ -271,7 +271,7 @@ async def _perform_fed_task(
     else:
         resp_str += f"\n<b>Status</b>: {task_type}ned in <b>{total}</b> feds."
         
-        resp_str += f"\n<b>{task_type}ned by</b>: <tg-spoiler>@oka1da</tg-spoiler>"
+        resp_str += f"\n<b>{task_type}ned by</b>: <a href='tg://user?id={message.from_user.id}'>{get_name(message.from_user)}</a>"
 
     if not message.is_from_owner:
         resp_str += f"\n\n<b>By</b>: {get_name(message.from_user)}"
