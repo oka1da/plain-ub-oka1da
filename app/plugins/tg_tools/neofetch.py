@@ -148,9 +148,17 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         # Remove apenas a linha de Memory que será substituída, mantém a CPU original
         filtered_lines = []
+        cpu_line = None
+        
         for line in lines:
             stripped_line = line.strip()
-            # Remove apenas linha Memory:, mantém a CPU original do neofetch
+            
+            # Guarda a linha da CPU para usar depois
+            if stripped_line.startswith('CPU:'):
+                cpu_line = line
+                continue
+            
+            # Remove apenas linha Memory:, mantém outras linhas
             if not stripped_line.startswith('Memory:'):
                 filtered_lines.append(line)
         
@@ -163,13 +171,17 @@ async def neofetch_handler(bot: BOT, message: Message):
         if insert_position == -1:
             insert_position = len(filtered_lines)
         
-        # GRUPO CPU - AGORA SÓ INFORMAÇÕES ADICIONAIS (não substitui a linha principal)
-        cpu_group = [
+        # GRUPO CPU - INFORMAÇÕES ADICIONAIS (com a linha principal da CPU no topo)
+        cpu_group = []
+        if cpu_line:
+            cpu_group.append(cpu_line)  # Adiciona a linha principal da CPU primeiro
+        
+        cpu_group.extend([
             f"Cores: {info.get('cpu_cores', '4')}",
             f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
             f"Load: {info.get('load_avg', '0.19, 0.17, 0.17')}"
-        ]
+        ])
         
         # GRUPO MEMÓRIA & ARMAZENAMENTO
         memory_value = info.get('memory', '4347MiB/15791MiB')
@@ -197,7 +209,7 @@ async def neofetch_handler(bot: BOT, message: Message):
             f"Public IP: {masked_ip_public}"     # MODIFICADO: Public → Public IP:
         ]
         
-        # Insere todos os grupos (sem a linha principal da CPU)
+        # Insere todos os grupos (com a linha principal da CPU no topo)
         all_groups = [""] + cpu_group + [""] + memory_group + [""] + network_group
         
         for i, group_line in enumerate(reversed(all_groups)):
