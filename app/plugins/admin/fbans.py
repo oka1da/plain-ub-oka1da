@@ -144,7 +144,7 @@ async def fed_ban(bot: BOT, message: Message):
         try:
             if message.chat.admin_privileges and message.chat.admin_privileges.can_restrict_members:
                 await message.replied.reply(
-                    text=f"!dban {reason}", disable_preview=True, del_in=3, block=False
+                    text=f"!dban {reason}", disable_preview=True, del_in=0, block=False
                 )
         except UserNotParticipant:
             pass
@@ -259,26 +259,29 @@ async def _perform_fed_task(
         await progress.edit("You Don't have any feds connected!")
         return
 
+    # FORMATO CORRIGIDO: Status em linha separada abaixo do Initiated in
     resp_str = (
-        f"❯❯❯ <b>{task_type}ned</b> {user_mention}"
-        f"\n<b>ID</b>: {user_id}"
-        f"\n<b>Reason</b>: {reason}"
-        f"\n<b>Initiated in</b>: {message.chat.title or 'PM'}"
+        f">>> FBanned {user_mention}\n"
+        f"ID: {user_id}\n"
+        f"Reason: {reason}\n"
+        f"Initiated in: {message.chat.title or 'PM'}\n"
+        f"Status: {task_type}ned in {total} feds.\n"
+        f"FBanned by: @oka1da"
     )
 
     if failed:
-        resp_str += f"\n<b>Failed</b> in: {len(failed)}/{total}\n• " + "\n• ".join(failed)
-    else:
-        resp_str += f"\n<b>Status</b>: {task_type}ned in <b>{total}</b> feds."
+        resp_str += f"\nFailed in: {len(failed)}/{total}\n• " + "\n• ".join(failed)
 
     if not message.is_from_owner:
-        resp_str += f"\n\n<b>By</b>: {get_name(message.from_user)}"
+        resp_str += f"\n\nBy: {get_name(message.from_user)}"
 
     await bot.send_message(
-        chat_id=extra_config.FBAN_LOG_CHANNEL, text=resp_str, disable_preview=True
+        chat_id=extra_config.FBAN_LOG_CHANNEL, 
+        text=resp_str, 
+        disable_preview=True
     )
 
-    await progress.edit(text=resp_str, del_in=5, block=True, disable_preview=True)
+    await progress.edit(text=resp_str, del_in=0, block=True, disable_preview=True)
 
     if "-nrc" not in message.flags:
         await handle_sudo_fban(command=command)
@@ -293,4 +296,4 @@ async def handle_sudo_fban(command: str):
     no_recurse_cmd = " ".join((head, "-nrc", body))
     await bot.send_message(
         chat_id=extra_config.FBAN_SUDO_ID, text=no_recurse_cmd, disable_preview=True
-    )
+        )
