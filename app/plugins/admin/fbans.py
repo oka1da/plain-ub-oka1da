@@ -39,7 +39,7 @@ async def add_fed(bot: BOT, message: Message):
     data = dict(name=message.input or message.chat.title, type=str(message.chat.type))
     await FED_DB.add_data({"_id": message.chat.id, **data})
     text = f"#FBANS\n<b>{data['name']}</b>: <code>{message.chat.id}</code> added to FED LIST."
-    await message.reply(text=text, del_in=5, block=True)
+    await message.reply(text=text, del_in=0, block=True)
     await bot.log_text(text=text, type="info")
 
 
@@ -70,10 +70,10 @@ async def remove_fed(bot: BOT, message: Message):
 
     if deleted:
         text = f"#FBANS\n<b>{name}</b><code>{chat}</code> removed from FED LIST."
-        await message.reply(text=text, del_in=8)
+        await message.reply(text=text, del_in=0)
         await bot.log_text(text=text, type="info")
     else:
-        await message.reply(text=f"<b>{name or chat}</b> not in FED LIST.", del_in=8)
+        await message.reply(text=f"<b>{name or chat}</b> not in FED LIST.", del_in=0)
 
 
 @bot.add_cmd(cmd="listf")
@@ -100,7 +100,7 @@ async def fed_list(bot: BOT, message: Message):
         return
 
     output: str = f"List of <b>{total}</b> Connected Feds:\n\n{output}"
-    await message.reply(output, del_in=30, block=True)
+    await message.reply(output, del_in=0, block=True)
 
 
 @bot.add_cmd(cmd=["fban", "fbanp"])
@@ -259,29 +259,24 @@ async def _perform_fed_task(
         await progress.edit("You Don't have any feds connected!")
         return
 
-    # CORREÇÃO: Diferencia entre Fban e Un-FBan
-    action = "FBanned" if task_type.lower() == "fban" else "Un-FBanned"
-    signature = "FBanned by: @oka1da" if task_type.lower() == "fban" else "Un-FBanned by @oka1da"
-    
     resp_str = (
-        f"❯❯❯ <b>{action}</b> {user_mention}\n"
-        f"<b>ID</b>: {user_id}\n"
-        f"<b>Reason</b>: {reason}\n"
-        f"<b>Initiated in</b>: {message.chat.title or 'PM'}\n"
-        f"<b>Status:</b> {task_type}ned in <b>{total}</b> feds.\n"
-        f"<b>{signature}</b>"
+        f"❯❯❯ <b>{task_type}ned</b> {user_mention}"
+        f"\n<b>ID</b>: {user_id}"
+        f"\n<b>Reason</b>: {reason}"
+        f"\n<b>Initiated in</b>: {message.chat.title or 'PM'}"
+        f"\n<b>{task_type}ned by: @oka1da</b>
     )
 
     if failed:
-        resp_str += f"\nFailed in: {len(failed)}/{total}\n• " + "\n• ".join(failed)
+        resp_str += f"\n<b>Failed</b> in: {len(failed)}/{total}\n• " + "\n• ".join(failed)
+    else:
+        resp_str += f"\n<b>Status</b>: {task_type}ned in <b>{total}</b> feds."
 
     if not message.is_from_owner:
-        resp_str += f"\n\nBy: {get_name(message.from_user)}"
+        resp_str += f"\n\n<b>By</b>: {get_name(message.from_user)}"
 
     await bot.send_message(
-        chat_id=extra_config.FBAN_LOG_CHANNEL, 
-        text=resp_str, 
-        disable_preview=True
+        chat_id=extra_config.FBAN_LOG_CHANNEL, text=resp_str, disable_preview=True
     )
 
     await progress.edit(text=resp_str, del_in=0, block=True, disable_preview=True)
