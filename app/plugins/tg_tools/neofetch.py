@@ -124,7 +124,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         # Processa a saída do neofetch
         lines = stdout.split('\n')
         
-        # MODIFICAÇÃO: Mostra Docker OS, Host OS e Host (hardware)
+        # MODIFICAÇÃO: Mostra Docker OS, Host OS e Host Model
         modified_lines = []
         host_os_added = False
         
@@ -139,19 +139,19 @@ async def neofetch_handler(bot: BOT, message: Message):
                     modified_lines.append(f"Host OS: Fedora Server 42 {info.get('architecture', 'x86_64')}")
                     host_os_added = True
             elif stripped_line.startswith('Host:'):
-                # Mantém a linha original do hardware
-                modified_lines.append(line)
+                # Altera para "Host Model:" - informação do hardware
+                modified_lines.append(line.replace('Host:', 'Host Model:'))
             else:
                 modified_lines.append(line)
         
         lines = modified_lines
         
-        # Remove apenas as linhas de CPU e Memory que serão substituídas
+        # Remove apenas a linha de Memory que será substituída, mantém a CPU original
         filtered_lines = []
         for line in lines:
             stripped_line = line.strip()
-            # Remove apenas linhas que começam com CPU: ou Memory:
-            if not (stripped_line.startswith('CPU:') or stripped_line.startswith('Memory:')):
+            # Remove apenas linha Memory:, mantém a CPU original do neofetch
+            if not stripped_line.startswith('Memory:'):
                 filtered_lines.append(line)
         
         # Encontra a posição para inserir os grupos
@@ -163,9 +163,8 @@ async def neofetch_handler(bot: BOT, message: Message):
         if insert_position == -1:
             insert_position = len(filtered_lines)
         
-        # GRUPO CPU - CORRIGIDO: 3.70GHz na descrição
+        # GRUPO CPU - AGORA SÓ INFORMAÇÕES ADICIONAIS (não substitui a linha principal)
         cpu_group = [
-            f"CPU: {info.get('cpu_model', 'Intel i3-9100T (4) @ 3.70GHz')}",
             f"Cores: {info.get('cpu_cores', '4')}",
             f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
@@ -182,7 +181,7 @@ async def neofetch_handler(bot: BOT, message: Message):
             f"Disk: {info.get('disk', '7.3G/118G (7%)')}"
         ]
         
-        # GRUPO REDE
+        # GRUPO REDE - COM NOVOS RÓTULOS
         network_tx = 138.2
         network_rx = 333.2
         try:
@@ -194,11 +193,11 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         network_group = [
             f"Traffic: ↑{network_tx:.1f}MB ↓{network_rx:.1f}MB",
-            f"Local: {masked_ip_local}",
-            f"Public: {masked_ip_public}"
+            f"Local IP: {masked_ip_local}",      # MODIFICADO: Local → Local IP:
+            f"Public IP: {masked_ip_public}"     # MODIFICADO: Public → Public IP:
         ]
         
-        # Insere todos os grupos
+        # Insere todos os grupos (sem a linha principal da CPU)
         all_groups = [""] + cpu_group + [""] + memory_group + [""] + network_group
         
         for i, group_line in enumerate(reversed(all_groups)):
