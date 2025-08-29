@@ -37,18 +37,16 @@ def mask_ip(ip_address: str) -> str:
     else:
         return ip_address
 
-def get_temperature_icon(temp: float) -> str:
+def get_cpu_usage_icon(usage: float) -> str:
     """
-    Returns a temperature icon based on CPU temperature.
+    Returns a CPU usage icon based on usage percentage.
     """
-    if temp < 40:
-        return "🌡️❄️"  # Frio
-    elif temp < 60:
-        return "🌡️💚"  # Normal
-    elif temp < 80:
-        return "🌡️💛"  # Quente
+    if usage < 30:
+        return "🟢"  # Baixo uso
+    elif usage < 70:
+        return "🟡"  # Uso moderado
     else:
-        return "🌡️🔥"  # Muito quente
+        return "🔴"  # Alto uso
 
 
 @bot.add_cmd(cmd="neofetch")
@@ -69,22 +67,24 @@ async def neofetch_handler(bot: BOT, message: Message):
             error_details = stderr or stdout or "Unknown error."
             raise RuntimeError(error_details)
         
-        # Coleta informações adicionais do sistema - COMANDOS MELHORADOS
+        # Coleta informações adicionais do sistema - COMANDOS ATUALIZADOS
         commands = {
             "disk": "df -h / | awk 'NR==2{print $3\"/\"$2 \" (\"$5\")\"}'",
             "ip_local": "hostname -I | awk '{print $1}'",
             "ip_public": "curl -s ifconfig.me",
             "load_avg": "cat /proc/loadavg | awk '{print $1\", \"$2\", \"$3}'",
-            "cpu_temp": "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 | awk '{print $1/1000}' || echo '27.8'",
+            # NOVOS COMANDOS ADICIONADOS:
+            "cpu_usage": "top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1 || echo '0'",
+            "cpu_arch": "lscpu | grep 'Architecture' | awk '{print $2}' || uname -m",
+            "cpu_virtualization": "lscpu | grep 'Virtualization' | awk '{print $3}' || echo 'VT-x'",
+            # COMANDOS EXISTENTES:
             "network_rx": "cat /proc/net/dev | grep -E '(eth|enp|wlp)' | head -1 | awk '{print $2/1024/1024}' || echo '333.2'",
             "network_tx": "cat /proc/net/dev | grep -E '(eth|enp|wlp)' | head -1 | awk '{print $10/1024/1024}' || echo '138.2'",
             "cpu_cores": "nproc",
             "cpu_freq": "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | awk '{print $4}' | cut -d'.' -f1 || echo '2700'",
             "architecture": "uname -m",
-            # COMANDO DE MEMÓRIA MELHORADO
             "memory": "free -h 2>/dev/null | grep Mem | awk '{print $3\"/\"$2}' || cat /proc/meminfo 2>/dev/null | awk '/MemTotal/ {total=$2} /MemAvailable/ {avail=$2} END {printf \"%.0fMiB/%.0fMiB\", avail/1024, total/1024}' || echo '4347MiB/15791MiB'",
             "cpu_model": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //' || echo 'Intel i3-9100T (4) @ 3.70GHz'",
-            # Comando para obter o modelo do host
             "host_model": "cat /sys/class/dmi/id/product_name 2>/dev/null || echo 'OptiPlex 3070'"
         }
         
@@ -100,17 +100,16 @@ async def neofetch_handler(bot: BOT, message: Message):
         masked_ip_local = mask_ip(info.get('ip_local', 'N/A'))
         masked_ip_public = mask_ip(info.get('ip_public', 'N/A'))
         
-        # Formata temperatura da CPU
-        cpu_temp = "27.8°C"
-        temp_icon = "🌡️💚"
-        if info.get('cpu_temp') != "N/A" and info.get('cpu_temp'):
+        # Formata uso da CPU
+        cpu_usage = "0%"
+        usage_icon = "🟢"
+        if info.get('cpu_usage') != "N/A" and info.get('cpu_usage'):
             try:
-                temp_value = float(info['cpu_temp'])
-                cpu_temp = f"{temp_value}°C"
-                temp_icon = get_temperature_icon(temp_value)
-                cpu_temp = f"{temp_icon} {cpu_temp}"
+                usage_value = float(info['cpu_usage'])
+                usage_icon = get_cpu_usage_icon(usage_value)
+                cpu_usage = f"{usage_icon} {usage_value}%"
             except (ValueError, TypeError):
-                cpu_temp = f"{temp_icon} 27.8°C"
+                cpu_usage = f"{usage_icon} 0%"
         
         # Formata frequência da CPU
         cpu_freq = "2700 MHz"
@@ -179,7 +178,9 @@ async def neofetch_handler(bot: BOT, message: Message):
         cpu_group.extend([
             f"Cores: {info.get('cpu_cores', '4')}",
             f"Freq: {cpu_freq}",
-            f"Temp: {cpu_temp}",
+            f"Usage: {cpu_usage}",  # Uso da CPU em vez de temperatura
+            f"Arch: {info.get('cpu_arch', 'x86_64')}",  # Arquitetura da CPU
+            f"VT: {info.get('cpu_virtualization', 'VT-x')}",  # Virtualização
             f"Load: {info.get('load_avg', '0.19, 0.17, 0.17')}"
         ])
         
@@ -205,8 +206,8 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         network_group = [
             f"Traffic: ↑{network_tx:.1f}MB ↓{network_rx:.1f}MB",
-            f"Local IP: {masked_ip_local}",      # MODIFICADO: Local → Local IP:
-            f"Public IP: {masked_ip_public}"     # MODIFICADO: Public → Public IP:
+            f"Local IP: {masked_ip_local}",
+            f"Public IP: {masked_ip_public}"
         ]
         
         # Insere todos os grupos (com a linha principal da CPU no topo)
