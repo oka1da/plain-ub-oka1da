@@ -264,13 +264,14 @@ async def _perform_fed_task(
         f"\n<b>ID</b>: {user_id}"
         f"\n<b>Reason</b>: {reason}"
         f"\n<b>Initiated in</b>: {message.chat.title or 'PM'}"
-        f"\n<b>{task_type}ned by: @oka1da</b>"
     )
 
     if failed:
         resp_str += f"\n<b>Failed</b> in: {len(failed)}/{total}\n• " + "\n• ".join(failed)
     else:
         resp_str += f"\n<b>Status</b>: {task_type}ned in <b>{total}</b> feds."
+        
+        resp_str += f"\n<b>{task_type}ned by: @oka1da</b>"
 
     if not message.is_from_owner:
         resp_str += f"\n\n<b>By</b>: {get_name(message.from_user)}"
