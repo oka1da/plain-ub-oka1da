@@ -264,12 +264,12 @@ async def _perform_fed_task(
     signature = "FBanned by: @oka1da" if task_type.lower() == "fban" else "Un-FBanned by @oka1da"
     
     resp_str = (
-        f">>> {action} {user_mention}\n"
-        f"ID: {user_id}\n"
-        f"Reason: {reason}\n"
-        f"Initiated in: {message.chat.title or 'PM'}\n"
-        f"Status: {task_type}ned in {total} feds.\n"
-        f"{signature}"
+        f"❯❯❯ <b>{action}</b> {user_mention}\n"
+        f"<b>ID</b>: {user_id}\n"
+        f"<b>Reason</b>: {reason}\n"
+        f"<b>Initiated in</b>: {message.chat.title or 'PM'}\n"
+        f"<b>Status:</b> {task_type}ned in <b>{total}</b> feds.\n"
+        f"<b>{signature}</b>"
     )
 
     if failed:
