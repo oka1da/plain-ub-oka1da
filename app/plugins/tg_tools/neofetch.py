@@ -83,7 +83,9 @@ async def neofetch_handler(bot: BOT, message: Message):
             "architecture": "uname -m",
             # COMANDO DE MEMÓRIA MELHORADO
             "memory": "free -h 2>/dev/null | grep Mem | awk '{print $3\"/\"$2}' || cat /proc/meminfo 2>/dev/null | awk '/MemTotal/ {total=$2} /MemAvailable/ {avail=$2} END {printf \"%.0fMiB/%.0fMiB\", avail/1024, total/1024}' || echo '4347MiB/15791MiB'",
-            "cpu_model": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //' || echo 'Intel i3-9100T (4) @ 3.70GHz'"  # CORRIGIDO: 3.70GHz
+            "cpu_model": "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | sed 's/^ //' || echo 'Intel i3-9100T (4) @ 3.70GHz'",
+            # Comando para obter o modelo do host
+            "host_model": "cat /sys/class/dmi/id/product_name 2>/dev/null || echo 'OptiPlex 3070'"
         }
         
         info = {}
@@ -122,21 +124,34 @@ async def neofetch_handler(bot: BOT, message: Message):
         # Processa a saída do neofetch
         lines = stdout.split('\n')
         
-        # Substitui "OS:" por "OS Docker:" e adiciona OS Host abaixo
+        # MODIFICAÇÃO: Mostra Docker OS, Host OS e Host (hardware)
         modified_lines = []
+        host_os_added = False
+        
         for line in lines:
-            if line.strip().startswith('OS:'):
-                modified_lines.append(line.replace('OS:', 'OS Docker:'))
-                modified_lines.append(f"OS Host: Fedora Server 42 {info.get('architecture', 'x86_64')}")
+            stripped_line = line.strip()
+            
+            if stripped_line.startswith('OS:'):
+                # Altera para "Docker OS:" - informação do container
+                modified_lines.append(line.replace('OS:', 'Docker OS:'))
+                # Adiciona a linha do Host OS após o Docker OS
+                if not host_os_added:
+                    modified_lines.append(f"Host OS: Fedora Server 42 {info.get('architecture', 'x86_64')}")
+                    host_os_added = True
+            elif stripped_line.startswith('Host:'):
+                # Mantém a linha original do hardware
+                modified_lines.append(line)
             else:
                 modified_lines.append(line)
         
         lines = modified_lines
         
-        # Remove linhas que serão substituídas
+        # Remove apenas as linhas de CPU e Memory que serão substituídas
         filtered_lines = []
         for line in lines:
-            if not any(x in line for x in ['CPU:', 'Memory:']):
+            stripped_line = line.strip()
+            # Remove apenas linhas que começam com CPU: ou Memory:
+            if not (stripped_line.startswith('CPU:') or stripped_line.startswith('Memory:')):
                 filtered_lines.append(line)
         
         # Encontra a posição para inserir os grupos
@@ -150,7 +165,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         
         # GRUPO CPU - CORRIGIDO: 3.70GHz na descrição
         cpu_group = [
-            f"CPU: {info.get('cpu_model', 'Intel i3-9100T (4) @ 3.70GHz')}",  # CORRIGIDO: 3.70GHz
+            f"CPU: {info.get('cpu_model', 'Intel i3-9100T (4) @ 3.70GHz')}",
             f"Cores: {info.get('cpu_cores', '4')}",
             f"Freq: {cpu_freq}",
             f"Temp: {cpu_temp}",
