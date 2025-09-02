@@ -280,7 +280,7 @@ async def _perform_fed_task(
         chat_id=extra_config.FBAN_LOG_CHANNEL, text=resp_str, disable_preview=True
     )
 
-    await progress.edit(text=resp_str, del_in=0, block=True, disable_preview=True)
+    await progress.edit(text=resp_str, del_in=55, block=True, disable_preview=True)
 
     if "-nrc" not in message.flags:
         await handle_sudo_fban(command=command)
