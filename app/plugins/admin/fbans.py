@@ -149,7 +149,7 @@ async def fed_ban(bot: BOT, message: Message):
         except UserNotParticipant:
             pass
 
-    fban_cmd: str = f"/fban <a href='tg://user?id={user_id}'>{user_id}</a> {reason}<b>{task_type}ned by</b>: <a href='tg://user?id={message.from_user.id}'>{get_name(message.from_user)}</a>"
+    fban_cmd: str = f"/fban <a href='tg://user?id={user_id}'>{user_id}</a> {reason}"
 
     await perform_fed_task(
         user_id=user_id,
